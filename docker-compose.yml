@@ -1,0 +1,55 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: db-postgres
+    environment:
+      POSTGRES_DB: barangdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - backend
+
+  api:
+    build: ./api
+    expose:
+      - "8080"
+    environment:
+      DB_HOST: db
+      DB_NAME: barangdb
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - backend
+      - frontend
+
+  web:
+    build: ./web
+    container_name: web-flask
+    ports:
+      - "8000:8000"
+    environment:
+      API_URL: http://api:8080
+    depends_on:
+      - api
+    networks:
+      - frontend
+
+volumes:
+  postgres_data:
+
+networks:
+  backend:
+    driver: bridge
+  frontend:
+    driver: bridge
